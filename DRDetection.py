@@ -1,16 +1,53 @@
 import os
 import random
 import time
-from shutil import copy2
+import cv2
+import numpy as np
+from PIL import Image
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from shutil import copy2
 from torchvision.models import resnet18
 from torchvision.models import ResNet18_Weights
 from torchvision import transforms
+from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import ImageFolder
-from torch.utils.data import DataLoader
 
+# Function to preprocess images with CLAHE and green channel extraction
+def preprocess_image_cv2(image_path):
+    """Apply CLAHE and Green Channel Extraction."""
+    img = cv2.imread(image_path)  # Read the image
+    green_channel = img[:, :, 1]  # Extract the green channel
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))  # Create CLAHE object
+    enhanced_img = clahe.apply(green_channel)  # Apply CLAHE to the green channel
+    return enhanced_img
+
+# Custom dataset class
+class CustomImageDataset(Dataset):
+    def __init__(self, image_folder, transform=None, preprocess=None):
+        self.image_folder = ImageFolder(image_folder)  # Use ImageFolder for labels
+        self.transform = transform
+        self.preprocess = preprocess
+
+    def __len__(self):
+        return len(self.image_folder)
+
+    def __getitem__(self, idx):
+        image_path, label = self.image_folder.samples[idx]  # Get image path and label
+        if self.preprocess:
+            # Preprocess with custom function
+            image = preprocess_image_cv2(image_path)
+            image = Image.fromarray(image).convert('L')  # Convert back to PIL image in grayscale
+            image = image.convert('RGB')  # Convert grayscale back to RGB for compatibility
+        else:
+            # Load original image
+            image = Image.open(image_path).convert('RGB')
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
 
 def split_dataset(data_dir, seed=10):
     random.seed(seed)
@@ -129,9 +166,9 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet normalization
 ])
 
-train_dataset = ImageFolder(root=train_dir, transform=transform)
-val_dataset = ImageFolder(root=val_dir, transform=transform)
-test_dataset = ImageFolder(root=test_dir, transform=transform)
+train_dataset = CustomImageDataset(image_folder=train_dir, transform=transform, preprocess=preprocess_image_cv2)
+val_dataset = CustomImageDataset(image_folder=val_dir, transform=transform, preprocess=preprocess_image_cv2)
+test_dataset = CustomImageDataset(image_folder=test_dir, transform=transform, preprocess=preprocess_image_cv2)
 
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
