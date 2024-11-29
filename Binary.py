@@ -181,6 +181,28 @@ optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-4)
 # Initialize EarlyStopping
 early_stopper = EarlyStopping(patience=5, verbose=True, save_path='best_model.pth')
 
+image_path = "C:/Users/benja/Desktop/DiabeticRetinopathy/archive/gaussian_filtered_images/gaussian_filtered_images/Binary/test/Yes_DR/0af296d2f04a.png"  # Use a sample image path
+
+# Read the original image
+original_image = cv2.imread(image_path)
+
+# Process the image using CLAHE and green channel extraction
+processed_image = preprocess_image_cv2(image_path)
+
+# Resize the processed image to match the original image's dimensions (224x224)
+processed_image_resized = cv2.resize(processed_image, (original_image.shape[1], original_image.shape[0]))
+
+# Convert the processed image to 3 channels (for consistency in concatenation)
+processed_image_colored = cv2.cvtColor(processed_image_resized, cv2.COLOR_GRAY2BGR)
+
+# Concatenate the original and processed images horizontally
+side_by_side = cv2.hconcat([original_image, processed_image_colored])
+
+# Display the concatenated image
+cv2.imshow("Original vs Processed", side_by_side)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
 # Training loop
 print("\033[1;31mBeginning training...\033[0m")
 for epoch in range(15):
