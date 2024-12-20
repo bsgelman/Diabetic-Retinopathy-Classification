@@ -100,11 +100,6 @@ This project uses the [Diabetic Retinopathy 224x224 Gaussian Filtered Dataset](h
   - Python 3.8+
   - PyTorch, torchvision, Streamlit, OpenCV, and NumPy
 
-- Install the required packages using:
-  ```bash
-  pip install -r requirements.txt
-  ```
-
 ---
 
 ## Notes
