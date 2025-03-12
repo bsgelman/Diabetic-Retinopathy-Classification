@@ -97,13 +97,10 @@ def split_dataset(data_dir, seed=10): # function that randomly splits dataset in
 
 class EarlyStopping:
     def __init__(self, patience=5, verbose=False, delta=0, save_path='best_model.pth'):
-        """
-        Args:
-            patience (int): How long to wait after last time validation loss improved.
-            verbose (bool): If True, prints a message for each validation loss improvement.
-            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
-            save_path (str): Path to save the best model.
-        """
+        # patience: how long to wait after last time validation loss improved
+        # verbose: if True, prints a message for each validation loss improvement
+        # delta: Minimum change in the monitored quantity to qualify as an improvement
+        # save_path: Path to save the best model
         self.patience = patience
         self.verbose = verbose
         self.delta = delta
