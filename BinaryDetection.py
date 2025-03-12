@@ -14,18 +14,16 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import ImageFolder
 
-# Function to preprocess images with CLAHE and green channel extraction
 def preprocess_image_cv2(image_path):
-    img = cv2.imread(image_path)  # Read the image
-    green_channel = img[:, :, 1]  # Extract the green channel
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))  # Create CLAHE object
-    enhanced_img = clahe.apply(green_channel)  # Apply CLAHE to the green channel
+    img = cv2.imread(image_path)  # read the image
+    green_channel = img[:, :, 1]  # extract the green channel
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))  # create CLAHE object
+    enhanced_img = clahe.apply(green_channel)  # apply CLAHE to the green channel
     return enhanced_img
 
-# Custom dataset class
 class CustomImageDataset(Dataset):
     def __init__(self, image_folder, transform=None, preprocess=None):
-        self.image_folder = ImageFolder(image_folder)  # Use ImageFolder for labels
+        self.image_folder = ImageFolder(image_folder)  # use ImageFolder for labels
         self.transform = transform
         self.preprocess = preprocess
 
@@ -33,14 +31,14 @@ class CustomImageDataset(Dataset):
         return len(self.image_folder)
 
     def __getitem__(self, idx):
-        image_path, label = self.image_folder.samples[idx]  # Get image path and label
+        image_path, label = self.image_folder.samples[idx]  # get image path and label
         if self.preprocess:
-            # Preprocess with custom function
+            # preprocess with custom function
             image = preprocess_image_cv2(image_path)
-            image = Image.fromarray(image).convert('L')  # Convert back to PIL image in grayscale
-            image = image.convert('RGB')  # Convert grayscale back to RGB for compatibility
+            image = Image.fromarray(image).convert('L')  # convert back to PIL image in grayscale
+            image = image.convert('RGB')  # convert grayscale back to RGB for compatibility
         else:
-            # Load original image
+            # load original image
             image = Image.open(image_path).convert('RGB')
 
         if self.transform:
@@ -48,7 +46,7 @@ class CustomImageDataset(Dataset):
 
         return image, label
 
-def split_dataset(data_dir, seed=10): # Function that randomly splits dataset into training images and test images based on a ratio and a seed (for replication)
+def split_dataset(data_dir, seed=10): # function that randomly splits dataset into training images and test images based on a ratio and a seed (for replication)
     random.seed(seed)
 
     train_ratio = 0.64 # 64% for training
@@ -65,20 +63,20 @@ def split_dataset(data_dir, seed=10): # Function that randomly splits dataset in
     os.makedirs(test_dir)
     os.makedirs(val_dir)
 
-    for class_name in os.listdir(data_dir): # Iterate through each directory
+    for class_name in os.listdir(data_dir): # iterate through each directory
         class_dir = os.path.join(data_dir, class_name)
-        if os.path.isdir(class_dir) and class_name not in ['train', 'val', 'test', 'Binary']:  # Ensure it's a directory
+        if os.path.isdir(class_dir) and class_name not in ['train', 'val', 'test', 'Binary']:  # ensure it's a directory
             images = os.listdir(class_dir)
-            random.shuffle(images)  # Shuffle images
+            random.shuffle(images)  # shuffle images
             #images = images[:300]
 
             train_size = int(len(images) * train_ratio)# len(images)
             val_size = int(len(images) * val_ratio) 
             train_images = images[:train_size]
             val_images = images[train_size:train_size + val_size]
-            test_images = images[train_size + val_size:] # Remainder of images are for testing
+            test_images = images[train_size + val_size:] # remainder of images are for testing
 
-            # Create subdirectories for each class in train, val, and test folders
+            # create subdirectories for each class in train, val, and test folders
             train_class_dir = os.path.join(train_dir, class_name)
             val_class_dir = os.path.join(val_dir, class_name)
             test_class_dir = os.path.join(test_dir, class_name)
@@ -87,7 +85,7 @@ def split_dataset(data_dir, seed=10): # Function that randomly splits dataset in
             os.makedirs(val_class_dir)
             os.makedirs(test_class_dir)
 
-            # Copy files to respective directories
+            # copy files to respective directories
             for img in train_images:
                 copy2(os.path.join(class_dir, img), os.path.join(train_class_dir, img))
             for img in val_images:
@@ -128,40 +126,36 @@ class EarlyStopping:
             if self.counter >= self.patience:
                 self.early_stop = True
 
-# Load the ResNet model
 class ResNetClassifier(nn.Module):
     def __init__(self, num_classes=2):
         super(ResNetClassifier, self).__init__()
-        self.model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)  # Load a ResNet-18 model
-        num_features = self.model.fc.in_features  # Get the number of features in the last layer
+        self.model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)  # load a ResNet-18 model
+        num_features = self.model.fc.in_features  # get the number of features in the last layer
         self.model.fc = nn.Sequential(
-            nn.Dropout(0.5),  # Dropout with 50% probability
-            nn.Linear(num_features, 1)  # Fully connected layer for classification
+            nn.Dropout(0.5),  # dropout with 50% probability
+            nn.Linear(num_features, 1)  # fully connected layer for classification
         )
 
     def forward(self, x):
         return self.model(x)
 
-# Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if device == "cuda":
     print("Running on GPU.")
 else:
     print("Running on CPU.")
 
-# Split the dataset
 data = "C:/Users/benja/Desktop/DiabeticRetinopathy/archive/gaussian_filtered_images/gaussian_filtered_images/Binary"
 split_dataset(data, 10)
 
-# Prepare data loaders
 train_dir = os.path.join(data, 'train')
 val_dir = os.path.join(data, 'val')
 test_dir = os.path.join(data, 'test')
 
 transform = transforms.Compose([
-    transforms.Resize((224, 224)),  # Ensure images are 224x224 pixels
-    transforms.ToTensor(),  # Convert images to PyTorch tensors
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet normalization
+    transforms.Resize((224, 224)),  # ensure images are 224x224 pixels
+    transforms.ToTensor(),  # convert images to PyTorch tensors
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # imageNet normalization
 ])
 
 train_dataset = CustomImageDataset(image_folder=train_dir, transform=transform, preprocess=preprocess_image_cv2)
@@ -172,42 +166,33 @@ train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-# Initialize ResNet model
 model = ResNetClassifier(num_classes=2).to(device)
 criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-4)
 
-# Initialize EarlyStopping
 early_stopper = EarlyStopping(patience=5, verbose=True, save_path='best_model.pth')
 
-image_path = "C:/Users/benja/Desktop/DiabeticRetinopathy/archive/gaussian_filtered_images/gaussian_filtered_images/Binary/test/Yes_DR/0af296d2f04a.png"  # Use a sample image path
+image_path = "C:/Users/benja/Desktop/DiabeticRetinopathy/archive/gaussian_filtered_images/gaussian_filtered_images/Binary/test/Yes_DR/0af296d2f04a.png"  # use a sample image path
 
-# Read the original image
 original_image = cv2.imread(image_path)
 
-# Process the image using CLAHE and green channel extraction
 processed_image = preprocess_image_cv2(image_path)
 
-# Resize the processed image to match the original image's dimensions (224x224)
 processed_image_resized = cv2.resize(processed_image, (original_image.shape[1], original_image.shape[0]))
 
-# Convert the processed image to 3 channels (for consistency in concatenation)
 processed_image_colored = cv2.cvtColor(processed_image_resized, cv2.COLOR_GRAY2BGR)
 
-# Concatenate the original and processed images horizontally
 side_by_side = cv2.hconcat([original_image, processed_image_colored])
 
-# Display the concatenated image
 cv2.imshow("Original vs Processed", side_by_side)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-# Training loop
 print("\033[1;31mBeginning training...\033[0m")
 for epoch in range(5):
     start_time = time.time()
 
-    # Training phase
+    # training phase
     model.train()
     train_loss, correct_train, total_train = 0.0, 0, 0
     for inputs, labels in train_loader:
@@ -227,7 +212,7 @@ for epoch in range(5):
     train_accuracy = correct_train / total_train
     train_loss /= len(train_loader)
 
-    # Validation phase
+    # validation phase
     model.eval()
     val_loss, val_correct, val_total = 0.0, 0, 0
     with torch.no_grad():
@@ -247,7 +232,6 @@ for epoch in range(5):
     epoch_duration = time.time() - start_time
     print(f"Epoch {epoch+1}, Train Accuracy: {train_accuracy:.2f}, Train Loss: {train_loss:.4f}, Validation Accuracy: {val_accuracy:.2f}, Validation Loss: {val_loss:.4f}, Time: {epoch_duration:.2f} seconds")
 
-    # Check for early stopping
     early_stopper(val_loss, model)
     if early_stopper.early_stop:
         print("\033[1;31mEarly stopping triggered.\033[0m")
@@ -255,11 +239,9 @@ for epoch in range(5):
 
 print("\033[1;32mFinished training.\033[0m")
 
-# Load the best model before testing
-checkpoint = torch.load('best_model.pth', weights_only=True)  # Specify weights_only=True
+checkpoint = torch.load('best_model.pth', weights_only=True)  # specify weights_only=True
 model.load_state_dict(checkpoint)
 
-# Testing phase
 model.eval()
 test_loss, test_correct, test_total = 0.0, 0, 0
 start_time = time.time()
